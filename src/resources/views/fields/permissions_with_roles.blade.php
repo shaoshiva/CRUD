@@ -1,5 +1,5 @@
 <!-- permissions and roles -->
-<div class="form-group col-md-12 checklist_dependency"  data-entity ="{{ $field['field_unique_name'] }}" @include('crud::inc.field_wrapper_attributes')>
+<div class="col-md-12 checklist_dependency"  data-entity ="{{ $field['field_unique_name'] }}" @include('crud::inc.field_wrapper_attributes')>
 
     @if (!empty($field['label']))
         <label>{!! $field['label'] !!}</label>
@@ -56,7 +56,7 @@
         var  {{ $field['field_unique_name'] }} = {!! $rolesPermissions->toJson() !!};
     </script>
 
-    <div class="row" >
+    <div class="row form-group">
 
         <div class="col-xs-12">
             <label>{!! $fieldRole['label'] !!}</label>
@@ -120,7 +120,7 @@
 
     </div>
 
-    <div class="row">
+    <div class="row form-group">
         <div class="col-xs-10">
             <label>{!! $fieldPermission['label'] !!}</label>
         </div>

@@ -1,7 +1,10 @@
-<!-- dependencyJson -->
+<!-- permissions and roles -->
 <div class="form-group col-md-12 checklist_dependency"  data-entity ="{{ $field['field_unique_name'] }}" @include('crud::inc.field_wrapper_attributes')>
 
-    <label>{!! $field['label'] !!}</label>
+    @if (!empty($field['label']))
+        <label>{!! $field['label'] !!}</label>
+    @endif
+
     @include('crud::inc.field_translatable_icon')
 
     <?php
@@ -76,12 +79,12 @@
         <?php $roleColumns = array_get($fieldRole, 'columns') ?>
 
         @if (is_bool($roleColumns))
-        <div class="col-sm-12">
+            <div class="col-sm-12">
         @endif
 
         @foreach ($fieldRole['model']::all() as $role)
             @if (is_int($roleColumns))
-            <div class="col-sm-{{ is_int($roleColumns) ? intval(12 / $roleColumns) : '12' }}">
+                <div class="col-sm-{{ is_int($roleColumns) ? intval(12 / $roleColumns) : '12' }}">
             @endif
                 <div class="checkbox {{ $roleColumns === true ? 'inline' : '' }}">
                     <label>
@@ -92,9 +95,9 @@
                             @foreach ($fieldRole as $attribute => $value)
                                 @if (is_string($attribute) && $attribute != 'value')
                                     @if ($attribute=='name')
-                                    {{ $attribute }}="{{ $value }}_show[]"
+                                        {{ $attribute }}="{{ $value }}_show[]"
                                     @else
-                                    {{ $attribute }}="{{ $value }}"
+                                        {{ $attribute }}="{{ $value }}"
                                     @endif
                                 @endif
                             @endforeach
@@ -112,14 +115,25 @@
         @endforeach
 
         @if (is_bool($roleColumns))
-        </div>
+            </div>
         @endif
 
     </div>
 
     <div class="row">
-        <div class="col-xs-12">
+        <div class="col-xs-10">
             <label>{!! $fieldPermission['label'] !!}</label>
+        </div>
+        <div class="col-sm-2">
+            <div class="pull-right">
+                <a href="" class="btn btn-default btn-xs uncheck-row" title="Uncheck all" class="">
+                    <i class="fa fa-square-o"></i>&nbsp; None
+                </a>
+                &nbsp;
+                <a href="" class="btn btn-default btn-xs check-row" title="Check all">
+                    <i class="fa fa-check-square-o"></i>&nbsp; All
+                </a>
+            </div>
         </div>
 
         <div class="hidden_fields_secondary" data-name="{{ $fieldPermission['name'] }}">
@@ -158,7 +172,6 @@
                                         type="checkbox"
                                         class="secondary_list"
                                         data-id="{{ $permission->id }}"
-                                        data-last-checked-state="{{ $hasPermissionViaUser ? 'true' : '' }}"
                                         @foreach ($fieldPermission as $attribute => $value)
                                             @if (is_string($attribute) && $attribute != 'value' && !is_callable($value))
                                                 @if ($attribute=='name')
@@ -183,11 +196,11 @@
                     </div>
                     <div class="col-sm-2">
                         <div class="pull-right">
-                            <a href="" class="btn btn-default btn-xs" title="Uncheck all">
+                            <a href="" class="btn btn-default btn-xs uncheck-row" title="Uncheck all" class="">
                                 <i class="fa fa-square-o"></i>&nbsp; None
                             </a>
                             &nbsp;
-                            <a href="" class="btn btn-default btn-xs" title="Check all">
+                            <a href="" class="btn btn-default btn-xs check-row" title="Check all">
                                 <i class="fa fa-check-square-o"></i>&nbsp; All
                             </a>
                         </div>
@@ -227,6 +240,50 @@
 
                 // Gets the permissions granted by each role
                 var rolesPermissions = window[unique_name];
+
+                /**
+                 * Check/uncheck all
+                 */
+                $field.find('.check-row').on('click', function(event) {
+                    event.preventDefault();
+                    $(this).closest('.row').find('.secondary_list').each(function() {
+                        var $input = $(this);
+                        $input.prop('checked', true);
+                        addInputHidden($input);
+                    });
+                    return false;
+                });
+                $field.find('.uncheck-row').on('click', function() {
+                    event.preventDefault();
+                    $(this).closest('.row').find('.secondary_list').each(function() {
+                        var $input = $(this);
+                        if (!$input.is(':disabled')) {
+                            $input.prop('checked', false);
+                        }
+                        removeInputHidden($input);
+                    });
+                    return false;
+                });
+                $field.find('.check-all').on('click', function(event) {
+                    event.preventDefault();
+                    $field.find('.secondary_list').each(function() {
+                        var $input = $(this);
+                        $input.prop('checked', true);
+                        removeInputHidden($input);
+                    });
+                    return false;
+                });
+                $field.find('.uncheck-all').on('click', function() {
+                    event.preventDefault();
+                    $field.find('.secondary_list').each(function() {
+                        var $input = $(this);
+                        if (!$input.is(':disabled')) {
+                            $input.prop('checked', false);
+                        }
+                        addInputHidden($input);
+                    });
+                    return false;
+                });
 
                 /**
                  * Roles
@@ -275,13 +332,21 @@
                                     // If not granted by another role, removes the disabled state and resets to the last checked state
                                     if (inOtherRoles.length === 0) {
                                         var $input = $field.find('input.secondary_list[value="' + permissionId + '"]');
-                                        $input.prop('checked', $input.data('last-checked-state')).prop('disabled', false);
+                                        $input.prop('checked', hasInputHidden($input)).prop('disabled', false);
                                     }
                                 });
                             }
                         }
                     });
                 });
+
+                /**
+                 * Checks if input has a hidden field
+                 */
+                function hasInputHidden($input)
+                {
+                    return $field.find('.hidden_fields_secondary input[value="'+$input.data('id')+'"]').length > 0;
+                }
 
                 /**
                  * Permissions
@@ -291,26 +356,38 @@
                     var idCurrent = $input.data('id');
 
                     // Handles click on a permission
-                    $input.click(function () {
-
-                        // Checked
+                    $input.on('click update', function () {
                         if ($input.is(':checked')) {
-                            // Adds the value in a hidden field
-                            var nameInput = $field.find('.hidden_fields_secondary').data('name');
-                            if (!$field.find('.hidden_fields_secondary input[name="'+nameInput+'"]')) {
-                                var inputToAdd = $('<input type="hidden" class="secondary_hidden" name="' + nameInput + '[]" value="' + idCurrent + '">');
-                                $field.find('.hidden_fields_secondary').append(inputToAdd);
-                            }
+                            addInputHidden($input);
+                        } else {
+                            removeInputHidden($input);
                         }
-                        // Unchecked
-                        else {
-                            // Removes the hidden field
-                            $field.find('input.secondary_hidden[value="' + idCurrent + '"]').remove();
-                        }
-
-                        $input.data('last-checked-state', $input.is(':checked'));
                     })
                 });
+
+                /**
+                 * Adds the value in a hidden field
+                 *
+                 * @param $input
+                 */
+                function addInputHidden($input)
+                {
+                    if (!hasInputHidden($input)) {
+                        var nameInput = $field.find('.hidden_fields_secondary').data('name');
+                        var inputToAdd = $('<input type="hidden" class="secondary_hidden" name="' + nameInput + '[]" value="' + $input.data('id') + '">');
+                        $field.find('.hidden_fields_secondary').append(inputToAdd);
+                    }
+                }
+
+                /**
+                 * Removes the hidden field
+                 *
+                 * @param $input
+                 */
+                function removeInputHidden($input)
+                {
+                    $field.find('.hidden_fields_secondary input.secondary_hidden[value="' + $input.data('id') + '"]').remove();
+                }
             });
         });
     </script>

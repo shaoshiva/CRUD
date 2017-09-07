@@ -1,8 +1,8 @@
-<!-- select2 -->
+<!-- permissions -->
 <div @include('crud::inc.field_wrapper_attributes') >
 
     @if (!empty($field['label']))
-    <label>{!! $field['label'] !!}</label>
+        <label>{!! $field['label'] !!}</label>
     @endif
 
     @include('crud::inc.field_translatable_icon')
@@ -19,12 +19,13 @@
                     @foreach ($permissions as $permission)
                         <div class="checkbox inline no-margin">
                             <label>
-                                <input type="checkbox"
-                                       name="{{ $field['name'] }}[]"
-                                       value="{{ $permission->getKey() }}"
-                                       @if( ( old( $field["name"] ) && in_array($permission->getKey(), old( $field["name"])) ) || (isset($field['value']) && in_array($permission->getKey(), $field['value']->pluck($permission->getKeyName(), $permission->getKeyName())->toArray())))
-                                       checked = "checked"
-                                       @endif > {!! $permission->item() !!} &nbsp;
+                                <input
+                                    type="checkbox"
+                                    name="{{ $field['name'] }}[]"
+                                    value="{{ $permission->getKey() }}"
+                                    @if( ( old( $field["name"] ) && in_array($permission->getKey(), old( $field["name"])) ) || (isset($field['value']) && in_array($permission->getKey(), $field['value']->pluck($permission->getKeyName(), $permission->getKeyName())->toArray())))
+                                        checked = "checked"
+                                    @endif > {!! $permission->item() !!} &nbsp;
                             </label>
                         </div>
                     @endforeach

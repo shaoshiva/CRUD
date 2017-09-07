@@ -126,13 +126,13 @@
         </div>
         <div class="col-sm-2">
             <div class="pull-right">
-                <a href="" class="btn btn-default btn-xs uncheck-row" title="Uncheck all" class="">
+                <button class="btn btn-default btn-xs uncheck-all" title="Uncheck all">
                     <i class="fa fa-square-o"></i>&nbsp; None
-                </a>
+                </button>
                 &nbsp;
-                <a href="" class="btn btn-default btn-xs check-row" title="Check all">
+                <button href="" class="btn btn-default btn-xs check-all" title="Check all">
                     <i class="fa fa-check-square-o"></i>&nbsp; All
-                </a>
+                </button>
             </div>
         </div>
 
@@ -196,13 +196,13 @@
                     </div>
                     <div class="col-sm-2">
                         <div class="pull-right">
-                            <a href="" class="btn btn-default btn-xs uncheck-row" title="Uncheck all" class="">
+                            <button href="" class="btn btn-default btn-xs uncheck-row" title="Uncheck all" class="">
                                 <i class="fa fa-square-o"></i>&nbsp; None
-                            </a>
+                            </button>
                             &nbsp;
-                            <a href="" class="btn btn-default btn-xs check-row" title="Check all">
+                            <button href="" class="btn btn-default btn-xs check-row" title="Check all">
                                 <i class="fa fa-check-square-o"></i>&nbsp; All
-                            </a>
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -253,7 +253,7 @@
                     });
                     return false;
                 });
-                $field.find('.uncheck-row').on('click', function() {
+                $field.find('.uncheck-row').on('click', function(event) {
                     event.preventDefault();
                     $(this).closest('.row').find('.secondary_list').each(function() {
                         var $input = $(this);
@@ -269,18 +269,18 @@
                     $field.find('.secondary_list').each(function() {
                         var $input = $(this);
                         $input.prop('checked', true);
-                        removeInputHidden($input);
+                        addInputHidden($input);
                     });
                     return false;
                 });
-                $field.find('.uncheck-all').on('click', function() {
+                $field.find('.uncheck-all').on('click', function(event) {
                     event.preventDefault();
                     $field.find('.secondary_list').each(function() {
                         var $input = $(this);
                         if (!$input.is(':disabled')) {
                             $input.prop('checked', false);
                         }
-                        addInputHidden($input);
+                        removeInputHidden($input);
                     });
                     return false;
                 });
@@ -353,7 +353,6 @@
                  */
                 $field.find('.secondary_list').each(function() {
                     var $input = $(this);
-                    var idCurrent = $input.data('id');
 
                     // Handles click on a permission
                     $input.on('click update', function () {

@@ -5,44 +5,48 @@
     @include('crud::inc.field_translatable_icon')
 
     <?php
+    // Sanitizes the field value
+    $field['value'] = isset($field['value']) && is_array($field['value']) ? $field['value'] : null;
+
     $fieldRole = $field['subfields']['primary'];
     $fieldPermission = $field['subfields']['secondary'];
 
-    $entity_model = $crud->getModel();
-
+    // Gets the roles with their permissions
     $roles = $fieldRole['model']::with($fieldRole['entity_secondary'])->get();
-
-    // Gets the entity roles and permissions
-    $entityRoles = collect(isset($field['value']) && is_array($field['value']) ? array_get($field, 'value.0', []) : []);
-    $entityPermissions = collect(isset($field['value']) && is_array($field['value']) ? array_get($field, 'value.1', []) : []);
-
-    // Gets the permissions granted by the entity roles (update form only)
-    $entityRolesPermissions = collect();
-
-    // Gets the entity with roles and permissions
-    $entityWithDependencies = $entity_model->with($fieldRole['entity'])
-        ->with($fieldRole['entity'].'.'.$fieldRole['entity_secondary'])
-        ->find($id);
-
-    // Creates secondary dependency from primary relation, used to check which checkbox must be checked from second checklist
-    if (old($fieldRole['name'])) {
-        foreach (old($fieldRole['name']) as $role_item) {
-            $entityRolesPermissions = $entityRolesPermissions->merge($roles->search(function($role) use ($role_item) {
-                return $role->id;
-            }) ?: []);
-        }
-    }
-    // Creates dependencies from relation if not from validate error
-    else {
-        foreach ($entityWithDependencies->{$fieldRole['entity']} as $role) {
-            $entityRolesPermissions = $entityRolesPermissions->merge($role->{$fieldPermission['entity']}->pluck('id'));
-        }
-    }
 
     // Builds a simple matrix of roles and permissions (role id as key and array of permission ids as value)
     $rolesPermissions = $roles->pluck($fieldRole['entity_secondary'], 'id')->map(function($permissions) {
         return $permissions->pluck('id');
     });
+
+    // Gets the entity roles and permissions
+    $entityRoles = collect(is_array($field['value']) && isset($field['value'][0]) ? $field['value'][0] : []);
+    $entityPermissions = collect(is_array($field['value']) && isset($field['value'][1]) ? $field['value'][0] : []);
+
+    // Gets the permissions granted by the entity roles (update form only)
+    $entityRolesPermissions = collect();
+
+    // Gets the entity with roles and permissions
+    $entity = ($crud->getModel())->with($fieldRole['entity'])
+        ->with($fieldRole['entity'].'.'.$fieldRole['entity_secondary'])
+        ->find($id);
+
+    // Gets the permissions of each role related to the entity
+    $oldRoles = old($fieldRole['name']);
+    if ($oldRoles) {
+        // ...from previous input (validation error)
+        $selectedRoles = $roles->filter(function($role) use ($oldRoles) {
+            return in_array($role->id, $oldRoles);
+        });
+    } else {
+        // ...from current item
+        $selectedRoles = $entity->{$fieldRole['entity']};
+    }
+
+    // Converts to a flat list
+    $entityRolesPermissions = $selectedRoles->map(function($role) use ($fieldPermission) {
+        return $role->{$fieldPermission['entity']}->pluck('id');
+    })->flatten(1);
 
     ?>
     <script>
@@ -69,17 +73,17 @@
             @endif
         </div>
 
-        <?php $columns = array_get($fieldRole, 'columns') ?>
+        <?php $roleColumns = array_get($fieldRole, 'columns') ?>
 
-        @if (is_bool($columns))
+        @if (is_bool($roleColumns))
         <div class="col-sm-12">
         @endif
 
         @foreach ($fieldRole['model']::all() as $role)
-            @if (is_int($columns))
-            <div class="col-sm-{{ is_int($columns) ? intval(12 / $columns) : '12' }}">
+            @if (is_int($roleColumns))
+            <div class="col-sm-{{ is_int($roleColumns) ? intval(12 / $roleColumns) : '12' }}">
             @endif
-                <div class="checkbox {{ $columns === true ? 'inline' : '' }}">
+                <div class="checkbox {{ $roleColumns === true ? 'inline' : '' }}">
                     <label>
                         <input
                             type="checkbox"
@@ -95,22 +99,19 @@
                                 @endif
                             @endforeach
                             value="{{ $role->id }}"
-                            @if (
-                                (isset($field['value']) && is_array($field['value']) && in_array($role->id, $field['value'][0]->pluck('id', 'id')->toArray()))
-                                 || (old($fieldRole["name"]) && in_array($role->id, old($fieldRole["name"])))
-                             )
-                            checked = "checked"
+                            @if ((is_array($field['value']) && ($field['value'][0]->pluck('id')->contains($role->id))) || (old($fieldRole["name"]) && in_array($role->id, old($fieldRole["name"]))))
+                                checked = "checked"
                             @endif >
                             {{ $role->{$fieldRole['attribute']} }}
                     </label>
-                    {{ $columns === true ? '&nbsp;' : '' }}
+                    {{ $roleColumns === true ? '&nbsp;' : '' }}
                 </div>
-            @if (is_int($columns))
+            @if (is_int($roleColumns))
             </div>
             @endif
         @endforeach
 
-        @if (is_bool($columns))
+        @if (is_bool($roleColumns))
         </div>
         @endif
 
@@ -122,17 +123,17 @@
         </div>
 
         <div class="hidden_fields_secondary" data-name="{{ $fieldPermission['name'] }}">
-          @if (isset($field['value']))
-            @if (old($fieldPermission['name']))
-              @foreach(old($fieldPermission['name']) as $item)
-                <input type="hidden" class="secondary_hidden" name="{{ $fieldPermission['name'] }}[]" value="{{ $item }}">
-              @endforeach
-            @else
-              @foreach($field['value'][1]->pluck('id', 'id')->toArray() as $item)
-                <input type="hidden" class="secondary_hidden" name="{{ $fieldPermission['name'] }}[]" value="{{ $item }}">
-              @endforeach
+            @if (isset($field['value']))
+                @if (old($fieldPermission['name']))
+                    @foreach(old($fieldPermission['name']) as $item)
+                        <input type="hidden" class="secondary_hidden" name="{{ $fieldPermission['name'] }}[]" value="{{ $item }}">
+                    @endforeach
+                @else
+                    @foreach($field['value'][1]->pluck('id')->toArray() as $item)
+                        <input type="hidden" class="secondary_hidden" name="{{ $fieldPermission['name'] }}[]" value="{{ $item }}">
+                    @endforeach
+                @endif
             @endif
-          @endif
         </div>
 
         <div class="col-sm-12">
@@ -146,13 +147,18 @@
                     </div>
                     <div class="col-sm-7">
                         @foreach ($permissions as $permission)
+                            <?php
+                            $value = array_get($field, 'value');
+                            $hasPermissionViaUser = ($value[1]->pluck('id')->contains($permission->id)) || (old($fieldPermission['name']) && in_array($permission->id, old($fieldPermission['name'])));
+                            $hasPermissionViaRole = $entityRolesPermissions->contains($permission->id);
+                            ?>
                             <div class="checkbox inline no-margin">
                                 <label>
                                     <input
                                         type="checkbox"
-                                        class = 'secondary_list'
-                                        data-id = "{{ $permission->id }}"
-                                        value="{{ $permission->id }}"
+                                        class="secondary_list"
+                                        data-id="{{ $permission->id }}"
+                                        data-last-checked-state="{{ $hasPermissionViaUser ? 'true' : '' }}"
                                         @foreach ($fieldPermission as $attribute => $value)
                                             @if (is_string($attribute) && $attribute != 'value' && !is_callable($value))
                                                 @if ($attribute=='name')
@@ -162,15 +168,14 @@
                                                 @endif
                                             @endif
                                         @endforeach
-                                        @if (
-                                            (!empty($field['value']) && is_array($field['value']) && ($field['value'][1]->pluck('id')->contains($permission->id)))
-                                            || (old($fieldPermission['name']) && in_array($permission->id, old($fieldPermission['name'])))
-                                            || $entityRolesPermissions->contains($permission->id))
+                                        value="{{ $permission->id }}"
+                                        @if ($hasPermissionViaUser || $hasPermissionViaRole)
                                             checked = "checked"
-                                            @if ($entityRolesPermissions->contains($permission->id))
-                                                disabled = disabled
-                                            @endif
-                                        @endif >
+                                        @endif
+                                        @if ($hasPermissionViaRole)
+                                            disabled = disabled
+                                        @endif
+                                    >
                                     {{ is_callable($fieldPermission['attribute']) ? $fieldPermission['attribute']($permission) : $permission->{$fieldPermission['attribute']} }} &nbsp;
                                 </label>
                             </div>
@@ -224,84 +229,88 @@
                 var rolesPermissions = window[unique_name];
 
                 /**
-                 * Handles click on a role
+                 * Roles
                  */
-                $field.find('.primary_list').change(function() {
+                $field.find('.primary_list').each(function() {
                     var $input = $(this);
-                    var roleId = $input.data('id');
 
-                    // Check
-                    if ($input.is(':checked')) {
-                        //add hidden field with this value
-                        var nameInput = $field.find('.hidden_fields_primary').data('name');
-                        var inputToAdd = $('<input type="hidden" class="primary_hidden" name="'+nameInput+'[]" value="'+roleId+'">');
-                        $field.find('.hidden_fields_primary').append(inputToAdd);
+                    // Handles click on a role
+                    $input.change(function() {
+                        var $input = $(this);
+                        var roleId = $input.data('id');
 
-                        if ($.isArray(rolesPermissions[roleId])) {
-                            $.each(rolesPermissions[roleId], function (key, permissionId) {
-                                //check and disable secondaries checkboxes
-                                $field.find('input.secondary_list[value="' + permissionId + '"]').prop("checked", true).prop("disabled", true);
-                                //remove hidden fields with secondary dependency if was setted
-                                var hidden = $field.find('input.secondary_hidden[value="' + permissionId + '"]');
-                                if (hidden)
-                                    hidden.remove();
-                            });
-                        }
-                    }
-                    // Uncheck
-                    else {
-                        // Remove hidden field with this value
-                        $field.find('input.primary_hidden[value="'+roleId+'"]').remove();
+                        // Check
+                        if ($input.is(':checked')) {
+                            // Adds hidden field with this value
+                            var nameInput = $field.find('.hidden_fields_primary').data('name');
+                            var inputToAdd = $('<input type="hidden" class="primary_hidden" name="'+nameInput+'[]" value="'+roleId+'">');
+                            $field.find('.hidden_fields_primary').append(inputToAdd);
 
-                        // Uncheck and active secondary checkboxs if are not in other selected primary.
-                        var selectedRoles = [];
-                        $field.find('input.primary_hidden').each(function(index, input) {
-                            selectedRoles.push($(this).val());
-                        });
-
-                        if ($.isArray(rolesPermissions[roleId])) {
-                            $.each(rolesPermissions[roleId], function (index, permissionId) {
-
-                                // Searches if the permission is granted by another role
-                                var inOtherRoles = $.grep(selectedRoles, function (otherRoleId) {
-                                    return $.isArray(rolesPermissions[otherRoleId]) && rolesPermissions[otherRoleId].indexOf(permissionId) !== -1;
+                            if ($.isArray(rolesPermissions[roleId])) {
+                                $.each(rolesPermissions[roleId], function (key, permissionId) {
+                                    // Checks and disable secondaries checkboxes
+                                    $field.find('input.secondary_list[value="' + permissionId + '"]').prop("checked", true).prop("disabled", true);
                                 });
-
-                                // If not granted by another role, removes the disabled state and resets to the last checked state
-                                if (inOtherRoles.length === 0) {
-                                    var $input = $field.find('input.secondary_list[value="' + permissionId + '"]');
-                                    $input.prop('checked', $input.data('last-checked-state')).prop('disabled', false);
-                                }
-                            });
+                            }
                         }
-                    }
+                        // Uncheck
+                        else {
+                            // Removes hidden field with this value
+                            $field.find('input.primary_hidden[value="'+roleId+'"]').remove();
+
+                            // Unchecks and activates secondary checkboxes if are not in other selected primary.
+                            var selectedRoles = [];
+                            $field.find('input.primary_hidden').each(function(index, input) {
+                                selectedRoles.push($(this).val());
+                            });
+
+                            if ($.isArray(rolesPermissions[roleId])) {
+                                $.each(rolesPermissions[roleId], function (index, permissionId) {
+
+                                    // Checks if the permission is granted by another selected role
+                                    var inOtherRoles = $.grep(selectedRoles, function (otherRoleId) {
+                                        return $.isArray(rolesPermissions[otherRoleId]) && rolesPermissions[otherRoleId].indexOf(permissionId) !== -1;
+                                    });
+
+                                    // If not granted by another role, removes the disabled state and resets to the last checked state
+                                    if (inOtherRoles.length === 0) {
+                                        var $input = $field.find('input.secondary_list[value="' + permissionId + '"]');
+                                        $input.prop('checked', $input.data('last-checked-state')).prop('disabled', false);
+                                    }
+                                });
+                            }
+                        }
+                    });
                 });
 
                 /**
-                 * Handles click on a permission
+                 * Permissions
                  */
                 $field.find('.secondary_list').each(function() {
                     var $input = $(this);
+                    var idCurrent = $input.data('id');
 
-                    $input.data('last-checked-state', $input.is(':checked') && !$input.is(':disabled'));
-
+                    // Handles click on a permission
                     $input.click(function () {
-                        var idCurrent = $input.data('id');
 
+                        // Checked
                         if ($input.is(':checked')) {
-                            // Add hidden field with this value
+                            // Adds the value in a hidden field
                             var nameInput = $field.find('.hidden_fields_secondary').data('name');
-                            var inputToAdd = $('<input type="hidden" class="secondary_hidden" name="' + nameInput + '[]" value="' + idCurrent + '">');
-                            $field.find('.hidden_fields_secondary').append(inputToAdd);
-                        } else {
-                            // Remove hidden field with this value
+                            if (!$field.find('.hidden_fields_secondary input[name="'+nameInput+'"]')) {
+                                var inputToAdd = $('<input type="hidden" class="secondary_hidden" name="' + nameInput + '[]" value="' + idCurrent + '">');
+                                $field.find('.hidden_fields_secondary').append(inputToAdd);
+                            }
+                        }
+                        // Unchecked
+                        else {
+                            // Removes the hidden field
                             $field.find('input.secondary_hidden[value="' + idCurrent + '"]').remove();
                         }
 
                         $input.data('last-checked-state', $input.is(':checked'));
                     })
                 });
-
             });
         });
     </script>

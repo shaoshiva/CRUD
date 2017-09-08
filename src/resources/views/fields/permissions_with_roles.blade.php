@@ -117,7 +117,13 @@
                             @if ((is_array($field['value']) && ($field['value'][0]->pluck('id')->contains($role->id))) || (old($fieldRole["name"]) && in_array($role->id, old($fieldRole["name"]))))
                                 checked = "checked"
                             @endif >
-                            {{ $role->{$fieldRole['attribute']} }}
+                            @if (is_callable($fieldRole['attribute']))
+                                {{ $fieldRole['attribute']($role) }}
+                            @elseif (is_string($fieldRole['attribute']))
+                                {{ $role->{$fieldRole['attribute']} }}
+                            @else
+                                {{ $role->name }}
+                            @endif
                     </label>
                     {{ $roleColumns === true ? '&nbsp;' : '' }}
                 </div>
@@ -203,7 +209,13 @@
                                             disabled = disabled
                                         @endif
                                     >
-                                    {{ is_callable($fieldPermission['attribute']) ? $fieldPermission['attribute']($permission) : $permission->{$fieldPermission['attribute']} }} &nbsp;
+                                    @if (is_callable($fieldPermission['attribute']))
+                                        {{ $fieldPermission['attribute']($permission) }}
+                                    @elseif (is_string($fieldPermission['attribute']))
+                                        {{ $permission->{$fieldPermission['attribute']} }}
+                                    @else
+                                        {{ $permission->item() }}
+                                    @endif
                                 </label>
                             </div>
                         @endforeach

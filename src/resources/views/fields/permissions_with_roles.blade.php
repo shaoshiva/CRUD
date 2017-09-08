@@ -51,6 +51,18 @@
         return $role->{$fieldPermission['entity']}->pluck('id');
     })->flatten(1);
 
+    // Groups permissions by prefix
+    $permissionsByPrefix = $fieldPermission['model']::all()
+        ->sortBy(function($permission) {
+            return $permission->prefix() ?: PHP_INT_MAX; // Use PHP_INT_MAX as a little trick for sorting permissions without prefix at the end
+        })
+        ->groupBy(function($permission) {
+            return $permission->prefix();
+        });
+
+    // Checks if there is at least one permission with a prefix
+    $permissionWithPrefixExists = $permissionsByPrefix->keys()->filter()->isNotEmpty();
+
     ?>
     <script>
         var  {{ $field['field_unique_name'] }} = {!! $rolesPermissions->toJson() !!};
@@ -151,15 +163,17 @@
         </div>
 
         <div class="col-sm-12">
-            @foreach ($fieldPermission['model']::all()->groupBy(function($permission) { return $permission->prefix(); }) as $prefix => $permissions)
+            @foreach ($permissionsByPrefix as $prefix => $permissions)
                 <hr/>
                 <div class="row">
-                    <div class="col-sm-3">
-                        <label class="no-margin">
-                            <strong>{{ $prefix }}</strong>
-                        </label>
-                    </div>
-                    <div class="col-sm-7">
+                    @if ($permissionWithPrefixExists)
+                        <div class="col-sm-3">
+                            <label class="no-margin">
+                                <strong>{{ $prefix }}</strong>
+                            </label>
+                        </div>
+                    @endif
+                    <div class="col-sm-{{ $permissionWithPrefixExists ? 7 : 12 }}">
                         @foreach ($permissions as $permission)
                             <?php
                             $value = array_get($field, 'value');
@@ -194,17 +208,19 @@
                             </div>
                         @endforeach
                     </div>
-                    <div class="col-sm-2">
-                        <div class="pull-right">
-                            <button href="" class="btn btn-default btn-xs uncheck-row" title="Uncheck all" class="">
-                                <i class="fa fa-square-o"></i>&nbsp; None
-                            </button>
-                            &nbsp;
-                            <button href="" class="btn btn-default btn-xs check-row" title="Check all">
-                                <i class="fa fa-check-square-o"></i>&nbsp; All
-                            </button>
+                    @if ($permissionWithPrefixExists)
+                        <div class="col-sm-2">
+                            <div class="pull-right">
+                                <button href="" class="btn btn-default btn-xs uncheck-row" title="Uncheck all" class="">
+                                    <i class="fa fa-square-o"></i>&nbsp; None
+                                </button>
+                                &nbsp;
+                                <button href="" class="btn btn-default btn-xs check-row" title="Check all">
+                                    <i class="fa fa-check-square-o"></i>&nbsp; All
+                                </button>
+                            </div>
                         </div>
-                    </div>
+                    @endif
                 </div>
             @endforeach
         </div>

@@ -2,6 +2,8 @@
 
 namespace Backpack\CRUD\app\Http\Controllers\CrudFeatures;
 
+use Illuminate\Support\Collection;
+
 trait AjaxTable
 {
     /**
@@ -13,7 +15,7 @@ trait AjaxTable
         $this->crud->hasAccessOrFail('list');
 
         // create an array with the names of the searchable columns
-        $columns = $this->searchableColumns();
+        $columns = $this->searchableColumns()->toArray();
 
         // structure the response in a DataTable-friendly way
         $dataTable = new \LiveControl\EloquentDataTable\DataTable($this->crud->query, $columns);
@@ -48,7 +50,7 @@ trait AjaxTable
     /**
      * Gets the searchable columns.
      *
-     * @return array
+     * @return Collection
      */
     protected function searchableColumns()
     {
@@ -68,8 +70,7 @@ trait AjaxTable
             })
             ->pluck('name')
             // add the primary key, otherwise the buttons won't work
-            ->merge($this->crud->model->getKeyName())
-            ->toArray();
+            ->merge($this->crud->model->getKeyName());
 
         return $columns;
     }

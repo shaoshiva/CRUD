@@ -46,7 +46,7 @@ trait AjaxTable
     }
 
     /**
-     * Gets the searchable columns
+     * Gets the searchable columns.
      *
      * @return array
      */

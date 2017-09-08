@@ -13,15 +13,7 @@ trait AjaxTable
         $this->crud->hasAccessOrFail('list');
 
         // create an array with the names of the searchable columns
-        $columns = collect($this->crud->columns)
-                    ->reject(function ($column, $key) {
-                        // the select_multiple, model_function and model_function_attribute columns are not searchable
-                        return isset($column['type']) && ($column['type'] == 'select_multiple' || $column['type'] == 'model_function' || $column['type'] == 'model_function_attribute');
-                    })
-                    ->pluck('name')
-                    // add the primary key, otherwise the buttons won't work
-                    ->merge($this->crud->model->getKeyName())
-                    ->toArray();
+        $columns = $this->searchableColumns();
 
         // structure the response in a DataTable-friendly way
         $dataTable = new \LiveControl\EloquentDataTable\DataTable($this->crud->query, $columns);
@@ -51,5 +43,34 @@ trait AjaxTable
         });
 
         return $dataTable->make();
+    }
+
+    /**
+     * Gets the searchable columns
+     *
+     * @return array
+     */
+    protected function searchableColumns()
+    {
+        // create an array with the names of the searchable columns
+        $columns = collect($this->crud->columns)
+            // Excludes fields that are not searchable
+            ->reject(function ($column, $key) {
+                return array_get($column, 'searchable', true) === false;
+            })
+            // Excludes fields on a relation
+            ->reject(function ($column, $key) {
+                return array_key_exists('entity', $column);
+            })
+            // Excludes field types with no column
+            ->reject(function ($column, $key) {
+                return in_array(array_get($column, 'type'), ['select_multiple', 'model_function', 'model_function_attribute']);
+            })
+            ->pluck('name')
+            // add the primary key, otherwise the buttons won't work
+            ->merge($this->crud->model->getKeyName())
+            ->toArray();
+
+        return $columns;
     }
 }

@@ -3,6 +3,19 @@
     {
         $field['wrapperAttributes']['class'] = "form-group col-md-12 image";
     }
+
+    // Turns value and default into a relative URL (retroactive bugfix)
+    $baseUrl = url('').(isset($field['prefix']) ? $field['prefix'] : '');
+    if (isset($field['value'])) {
+        while (starts_with($field['value'], $baseUrl)) {
+            $field['value'] = str_after($field['value'], $baseUrl);
+        }
+    }
+    if (isset($field['default'])) {
+        while (starts_with($field['default'], $baseUrl)) {
+            $field['default'] = str_after($field['default'], $baseUrl);
+        }
+    }
 @endphp
 
   <div data-preview="#{{ $field['name'] }}"
@@ -140,8 +153,7 @@
                         $remove.hide();
                     }
                     // Initialise hidden form input in case we submit with no change
-                    $hiddenImage.val($mainImage.attr('src'));
-
+                    $hiddenImage.val(@json(isset($field['value']) ? $field['value'] : (isset($field['default']) ? $field['default'] : '')));
 
                     // Only initialize cropper plugin if crop is set to true
                     if(crop){

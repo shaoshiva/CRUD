@@ -35,10 +35,12 @@
 		                <td>
 		                    <strong>{{ $column['label'] }}</strong>
 		                </td>
-							@if (!isset($column['type']))
+		                    @if (!isset($column['type']))
 		                      @include('crud::columns.text')
 		                    @else
-		                      @if(view()->exists('vendor.backpack.crud.columns.'.$column['type']))
+		                      @if ($column['type'] === 'view')
+		                        @include($column['view'])
+		                      @elseif(view()->exists('vendor.backpack.crud.columns.'.$column['type']))
 		                        @include('vendor.backpack.crud.columns.'.$column['type'])
 		                      @else
 		                        @if(view()->exists('crud::columns.'.$column['type']))

@@ -140,8 +140,16 @@ trait Search
                             ->with('entry', $entry)
                             ->render();
         } else {
+            // show the custom column view
+            if ($column['type'] === 'view') {
+                return \View::make(array_get($column, 'view'))
+                    ->with('crud', $this)
+                    ->with('column', $column)
+                    ->with('entry', $entry)
+                    ->render();
+            }
             // if the column has been overwritten show that one
-            if (view()->exists('vendor.backpack.crud.columns.'.$column['type'])) {
+            elseif (view()->exists('vendor.backpack.crud.columns.'.$column['type'])) {
                 return \View::make('vendor.backpack.crud.columns.'.$column['type'])
                                 ->with('crud', $this)
                                 ->with('column', $column)
